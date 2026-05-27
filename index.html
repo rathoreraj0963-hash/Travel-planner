@@ -1,0 +1,150 @@
+/**
+ * File: frontend/src/components/LoadingScreen.css
+ */
+
+.loading-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 70vh;
+  padding: 2rem;
+}
+
+.loading-card {
+  background: var(--white);
+  border-radius: var(--radius-lg);
+  padding: 3rem 3.5rem;
+  max-width: 520px;
+  width: 100%;
+  text-align: center;
+  box-shadow: var(--shadow-lg);
+}
+
+.loading-globe {
+  font-size: 3.5rem;
+  animation: spin 4s linear infinite;
+  display: inline-block;
+  margin-bottom: 1rem;
+}
+
+@keyframes spin {
+  0%   { transform: rotate(0deg) scale(1); }
+  50%  { transform: rotate(180deg) scale(1.1); }
+  100% { transform: rotate(360deg) scale(1); }
+}
+
+.loading-title {
+  font-size: 1.7rem;
+  color: var(--teal);
+  margin-bottom: 0.4rem;
+}
+
+.loading-subtitle {
+  font-size: 0.9rem;
+  color: var(--muted);
+  margin-bottom: 2rem;
+}
+
+/* ─── Steps ─────────────────────────────────────────────────────────────── */
+.loading-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 2rem;
+  text-align: left;
+}
+
+.loading-step {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  padding: 0.65rem 1rem;
+  border-radius: var(--radius);
+  transition: var(--transition);
+}
+
+.loading-step--pending {
+  opacity: 0.35;
+}
+
+.loading-step--active {
+  background: rgba(13,92,99,.07);
+  border: 1px solid rgba(13,92,99,.2);
+}
+
+.loading-step--done {
+  background: rgba(46,125,92,.06);
+}
+
+.loading-step-icon {
+  font-size: 1.25rem;
+  width: 30px;
+  text-align: center;
+  flex-shrink: 0;
+  color: var(--success);
+}
+
+.loading-step--active .loading-step-icon { color: var(--teal); }
+.loading-step--pending .loading-step-icon { color: var(--muted); }
+
+.loading-step-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  flex: 1;
+}
+
+.loading-step-label {
+  font-size: 0.88rem;
+  font-weight: 500;
+  color: var(--ink);
+}
+
+.loading-step-badge {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--teal);
+  background: rgba(13,92,99,.1);
+  padding: 0.15rem 0.5rem;
+  border-radius: 20px;
+  width: fit-content;
+}
+
+/* Spinner dot */
+.loading-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2.5px solid var(--cream-dark);
+  border-top-color: var(--teal);
+  border-radius: 50%;
+  animation: rotate 0.7s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes rotate {
+  to { transform: rotate(360deg); }
+}
+
+/* ─── Progress Bar ───────────────────────────────────────────────────────── */
+.loading-bar-track {
+  height: 6px;
+  background: var(--cream-dark);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 0.5rem;
+}
+
+.loading-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--teal), var(--gold));
+  border-radius: 3px;
+  transition: width 0.5s ease;
+}
+
+.loading-percent {
+  font-size: 0.78rem;
+  color: var(--muted);
+  font-weight: 500;
+}

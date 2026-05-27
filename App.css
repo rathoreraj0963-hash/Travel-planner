@@ -1,0 +1,217 @@
+/**
+ * File: frontend/src/components/Form.js
+ * Travel planner input form.
+ * Handles local validation before submitting to the backend.
+ * Emits validated formData via onSubmit prop.
+ */
+
+import React, { useState } from 'react';
+import './Form.css';
+
+const PREFERENCE_OPTIONS = [
+  { value: 'adventure',   label: '🧗 Adventure'   },
+  { value: 'culture',     label: '🏛 Culture'      },
+  { value: 'food',        label: '🍜 Food & Drink' },
+  { value: 'relaxation',  label: '🧘 Relaxation'   },
+  { value: 'shopping',    label: '🛍 Shopping'     },
+  { value: 'nature',      label: '🌿 Nature'       },
+  { value: 'nightlife',   label: '🎶 Nightlife'    },
+  { value: 'family',      label: '👨‍👩‍👧 Family'       },
+];
+
+const TODAY = new Date().toISOString().split('T')[0];
+
+const Form = ({ onSubmit, serverErrors }) => {
+  const [form, setForm] = useState({
+    userName:    '',
+    destination: '',
+    startDate:   '',
+    endDate:     '',
+    budget:      '',
+    preferences: [],
+  });
+
+  const [localErrors, setLocalErrors] = useState([]);
+
+  // ─── Field change handlers ────────────────────────────────────────────────
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setForm((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const togglePreference = (val) => {
+    setForm((prev) => ({
+      ...prev,
+      preferences: prev.preferences.includes(val)
+        ? prev.preferences.filter((p) => p !== val)
+        : [...prev.preferences, val],
+    }));
+  };
+
+  // ─── Client-side validation ───────────────────────────────────────────────
+  const validate = () => {
+    const errs = [];
+    if (!form.destination.trim()) errs.push('Destination is required.');
+    if (!form.startDate)          errs.push('Start date is required.');
+    if (!form.endDate)            errs.push('End date is required.');
+    if (!form.budget)             errs.push('Budget is required.');
+    if (parseFloat(form.budget) <= 0) errs.push('Budget must be a positive number.');
+    if (form.startDate && form.startDate < TODAY) errs.push('Start date cannot be in the past.');
+    if (form.startDate && form.endDate && form.endDate <= form.startDate)
+      errs.push('End date must be after start date.');
+    return errs;
+  };
+
+  // ─── Submit handler ───────────────────────────────────────────────────────
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    const errs = validate();
+    if (errs.length > 0) {
+      setLocalErrors(errs);
+      return;
+    }
+    setLocalErrors([]);
+    onSubmit({ ...form, budget: parseFloat(form.budget) });
+  };
+
+  const allErrors = [...localErrors, ...(serverErrors || [])];
+
+  return (
+    <section className="form-section fade-up">
+      {/* Hero text */}
+      <div className="form-hero">
+        <h1 className="form-hero-title">
+          Your next adventure,<br />
+          <em>intelligently planned.</em>
+        </h1>
+        <p className="form-hero-sub">
+          Tell us where you're going. Our AI agents handle flights, hotels, dining & budget — all at once.
+        </p>
+      </div>
+
+      <div className="form-card fade-up fade-up-delay-1">
+        {/* Error banner */}
+        {allErrors.length > 0 && (
+          <div className="form-errors" role="alert">
+            <strong>⚠ Please fix the following:</strong>
+            <ul>
+              {allErrors.map((e, i) => <li key={i}>{e}</li>)}
+            </ul>
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} noValidate>
+          {/* Row 1 */}
+          <div className="form-row">
+            <div className="form-group">
+              <label htmlFor="userName">Your Name <span className="optional">(optional)</span></label>
+              <input
+                id="userName"
+                name="userName"
+                type="text"
+                placeholder="e.g. Alex"
+                value={form.userName}
+                onChange={handleChange}
+              />
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="destination">Destination <span className="required">*</span></label>
+              <input
+                id="destination"
+                name="destination"
+                type="text"
+                placeholder="e.g. Paris, Tokyo, Bali…"
+                value={form.destination}
+                onChange={handleChange}
+                required
+              />
+            </div>
+          </div>
+
+          {/* Row 2 */}
+          <div className="form-row">
+            <div className="form-group">
+              <label htmlFor="startDate">Departure Date <span className="required">*</span></label>
+              <input
+                id="startDate"
+                name="startDate"
+                type="date"
+                min={TODAY}
+                value={form.startDate}
+                onChange={handleChange}
+                required
+              />
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="endDate">Return Date <span className="required">*</span></label>
+              <input
+                id="endDate"
+                name="endDate"
+                type="date"
+                min={form.startDate || TODAY}
+                value={form.endDate}
+                onChange={handleChange}
+                required
+              />
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="budget">Total Budget (USD) <span className="required">*</span></label>
+              <div className="input-prefix-wrap">
+                <span className="input-prefix">$</span>
+                <input
+                  id="budget"
+                  name="budget"
+                  type="number"
+                  placeholder="e.g. 2000"
+                  min="1"
+                  step="50"
+                  value={form.budget}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Preferences */}
+          <div className="form-group form-group--full">
+            <label>Travel Preferences <span className="optional">(optional)</span></label>
+            <div className="pref-grid">
+              {PREFERENCE_OPTIONS.map(({ value, label }) => (
+                <button
+                  key={value}
+                  type="button"
+                  className={`pref-chip ${form.preferences.includes(value) ? 'pref-chip--selected' : ''}`}
+                  onClick={() => togglePreference(value)}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Summary bar */}
+          {form.startDate && form.endDate && form.startDate < form.endDate && (
+            <div className="form-summary">
+              <span>📅 {Math.ceil((new Date(form.endDate) - new Date(form.startDate)) / 86400000)} nights</span>
+              {form.budget && <span>💰 ${parseFloat(form.budget).toLocaleString()} budget</span>}
+              {form.preferences.length > 0 && (
+                <span>🎯 {form.preferences.length} preferences selected</span>
+              )}
+            </div>
+          )}
+
+          <button type="submit" className="btn-generate">
+            <span>Generate My Itinerary</span>
+            <span className="btn-arrow">→</span>
+          </button>
+        </form>
+      </div>
+    </section>
+  );
+};
+
+export default Form;

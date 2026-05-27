@@ -1,0 +1,74 @@
+/**
+ * File: backend/middleware/validateInput.js
+ * Validates incoming itinerary request payload before it
+ * reaches the controller. Returns 400 on any violation.
+ */
+
+/**
+ * Validates that all required fields are present and logically correct.
+ */
+const validateItineraryInput = (req, res, next) => {
+  const { destination, startDate, endDate, budget, preferences } = req.body;
+  const errors = [];
+
+  // ── Required field checks ─────────────────────────────────────────────────
+  if (!destination || destination.trim() === '') {
+    errors.push('Destination is required.');
+  }
+
+  if (!startDate) {
+    errors.push('Start date is required.');
+  }
+
+  if (!endDate) {
+    errors.push('End date is required.');
+  }
+
+  if (budget === undefined || budget === null || budget === '') {
+    errors.push('Budget is required.');
+  }
+
+  // ── Type / format checks ──────────────────────────────────────────────────
+  const budgetNum = parseFloat(budget);
+  if (isNaN(budgetNum) || budgetNum <= 0) {
+    errors.push('Budget must be a positive number.');
+  }
+
+  // ── Date logic checks ─────────────────────────────────────────────────────
+  if (startDate && endDate) {
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    if (isNaN(start.getTime())) {
+      errors.push('Start date is not a valid date.');
+    } else if (isNaN(end.getTime())) {
+      errors.push('End date is not a valid date.');
+    } else {
+      if (start < today) {
+        errors.push('Start date cannot be in the past.');
+      }
+      if (end <= start) {
+        errors.push('End date must be after start date.');
+      }
+      const durationDays = (end - start) / (1000 * 60 * 60 * 24);
+      if (durationDays > 30) {
+        errors.push('Trip duration cannot exceed 30 days.');
+      }
+    }
+  }
+
+  // ── Preferences check (optional but must be array if provided) ────────────
+  if (preferences && !Array.isArray(preferences)) {
+    errors.push('Preferences must be an array of strings.');
+  }
+
+  if (errors.length > 0) {
+    return res.status(400).json({ success: false, errors });
+  }
+
+  next();
+};
+
+module.exports = { validateItineraryInput };

@@ -1,0 +1,309 @@
+/**
+ * File: frontend/src/components/Itinerary.js
+ * Displays the complete generated itinerary from the multi-agent pipeline.
+ * Sections: Summary → Flight → Hotel → Budget → Daily Schedule
+ */
+
+import React, { useState } from 'react';
+import './Itinerary.css';
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+const fmt = (n) =>
+  Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+const statusMeta = {
+  within_budget: { label: 'Within Budget ✓',   cls: 'badge--success' },
+  slightly_over: { label: 'Slightly Over Budget',cls: 'badge--warn'   },
+  over_budget:   { label: 'Over Budget',         cls: 'badge--danger'  },
+};
+
+// ─── Sub-components ───────────────────────────────────────────────────────────
+
+const SummaryCard = ({ data }) => (
+  <div className="itin-summary-card fade-up">
+    <div className="itin-summary-destination">
+      <h1>{data.destination}</h1>
+      <span className={`budget-badge ${statusMeta[data.budgetStatus]?.cls}`}>
+        {statusMeta[data.budgetStatus]?.label}
+      </span>
+    </div>
+    <div className="itin-summary-meta">
+      <div className="meta-item">
+        <span className="meta-icon">👤</span>
+        <div>
+          <div className="meta-label">Traveller</div>
+          <div className="meta-value">{data.userName}</div>
+        </div>
+      </div>
+      <div className="meta-item">
+        <span className="meta-icon">📅</span>
+        <div>
+          <div className="meta-label">Dates</div>
+          <div className="meta-value">
+            {new Date(data.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+            {' → '}
+            {new Date(data.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+          </div>
+        </div>
+      </div>
+      <div className="meta-item">
+        <span className="meta-icon">🌙</span>
+        <div>
+          <div className="meta-label">Duration</div>
+          <div className="meta-value">{data.tripDays} nights</div>
+        </div>
+      </div>
+      <div className="meta-item">
+        <span className="meta-icon">💰</span>
+        <div>
+          <div className="meta-label">Budget / Spent</div>
+          <div className="meta-value">${fmt(data.budget)} / ${fmt(data.totalCost)}</div>
+        </div>
+      </div>
+      {data.savings > 0 && (
+        <div className="meta-item savings">
+          <span className="meta-icon">🎉</span>
+          <div>
+            <div className="meta-label">You Save</div>
+            <div className="meta-value">${fmt(data.savings)}</div>
+          </div>
+        </div>
+      )}
+    </div>
+    {data.preferences?.length > 0 && (
+      <div className="itin-prefs">
+        {data.preferences.map((p) => (
+          <span key={p} className="pref-tag">{p}</span>
+        ))}
+      </div>
+    )}
+  </div>
+);
+
+const FlightCard = ({ flight }) => {
+  if (!flight) return null;
+  return (
+    <div className="itin-section fade-up fade-up-delay-1">
+      <h2 className="section-title">✈️ Selected Flight</h2>
+      <div className="flight-card">
+        <div className="flight-airline">
+          <span className="flight-badge">{flight.class}</span>
+          <strong>{flight.airline}</strong>
+          <span className="flight-no">{flight.flightNo}</span>
+        </div>
+        <div className="flight-route">
+          <div className="flight-city">{flight.origin}</div>
+          <div className="flight-line">
+            <span>{'─'.repeat(6)}</span>
+            <span className="flight-icon">✈</span>
+            <span>{'─'.repeat(6)}</span>
+          </div>
+          <div className="flight-city">{flight.destination}</div>
+        </div>
+        <div className="flight-details">
+          <div className="flight-detail-item">
+            <span className="detail-label">Duration</span>
+            <span>{flight.duration}</span>
+          </div>
+          <div className="flight-detail-item">
+            <span className="detail-label">Stops</span>
+            <span>{flight.stops === 0 ? 'Direct' : `${flight.stops} stop(s)`}</span>
+          </div>
+          <div className="flight-detail-item">
+            <span className="detail-label">Refundable</span>
+            <span>{flight.refundable ? '✓ Yes' : '✗ No'}</span>
+          </div>
+          <div className="flight-detail-item flight-price">
+            <span className="detail-label">Price</span>
+            <strong>${fmt(flight.price)}</strong>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const HotelCard = ({ hotel }) => {
+  if (!hotel) return null;
+  return (
+    <div className="itin-section fade-up fade-up-delay-2">
+      <h2 className="section-title">🏨 Selected Hotel</h2>
+      <div className="hotel-card">
+        <div className="hotel-header">
+          <div>
+            <h3>{hotel.name}</h3>
+            <span className="hotel-area">📍 {hotel.area}, {hotel.destination}</span>
+          </div>
+          <div className="hotel-stars">
+            {'★'.repeat(hotel.stars || 0)}{'☆'.repeat(5 - (hotel.stars || 0))}
+          </div>
+        </div>
+        <div className="hotel-details">
+          <div className="hotel-detail-item">
+            <span className="detail-label">Per Night</span>
+            <span>${fmt(hotel.pricePerNight)}</span>
+          </div>
+          <div className="hotel-detail-item">
+            <span className="detail-label">Nights</span>
+            <span>{hotel.nights}</span>
+          </div>
+          <div className="hotel-detail-item">
+            <span className="detail-label">Rating</span>
+            <span>⭐ {hotel.rating} ({hotel.reviewCount?.toLocaleString()} reviews)</span>
+          </div>
+          <div className="hotel-detail-item hotel-price">
+            <span className="detail-label">Total</span>
+            <strong>${fmt(hotel.totalCost)}</strong>
+          </div>
+        </div>
+        <div className="hotel-amenities">
+          {(hotel.amenities || []).map((a) => (
+            <span key={a} className="amenity-tag">{a}</span>
+          ))}
+          {hotel.freeCancellation && (
+            <span className="amenity-tag amenity-tag--green">Free Cancellation</span>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const BudgetBreakdown = ({ data }) => {
+  const flightCost = data.selectedFlight?.price || 0;
+  const hotelCost  = data.selectedHotel?.totalCost || 0;
+  const foodCost   = (data.selectedFoods || []).reduce((s, f) => s + f.pricePerPerson, 0);
+  const items = [
+    { label: 'Flights',       cost: flightCost, pct: (flightCost / data.totalCost) * 100, icon: '✈️' },
+    { label: 'Hotel',         cost: hotelCost,  pct: (hotelCost  / data.totalCost) * 100, icon: '🏨' },
+    { label: 'Food & Dining', cost: foodCost,   pct: (foodCost   / data.totalCost) * 100, icon: '🍽️' },
+  ];
+
+  return (
+    <div className="itin-section fade-up fade-up-delay-3">
+      <h2 className="section-title">💰 Budget Breakdown</h2>
+      <div className="budget-card">
+        <div className="budget-bars">
+          {items.map(({ label, cost, pct, icon }) => (
+            <div key={label} className="budget-bar-row">
+              <div className="budget-bar-label">
+                <span>{icon} {label}</span>
+                <strong>${fmt(cost)}</strong>
+              </div>
+              <div className="budget-bar-track">
+                <div className="budget-bar-fill" style={{ width: `${pct}%` }} />
+              </div>
+              <span className="budget-bar-pct">{pct.toFixed(0)}%</span>
+            </div>
+          ))}
+        </div>
+        <div className="budget-totals">
+          <div className="budget-total-row">
+            <span>Total Cost</span>
+            <strong>${fmt(data.totalCost)}</strong>
+          </div>
+          <div className="budget-total-row">
+            <span>Your Budget</span>
+            <strong>${fmt(data.budget)}</strong>
+          </div>
+          {data.savings > 0 && (
+            <div className="budget-total-row budget-saved">
+              <span>💚 Amount Saved</span>
+              <strong>${fmt(data.savings)}</strong>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const DayCard = ({ day }) => {
+  const [open, setOpen] = useState(false);
+  const meals = day.meals;
+  return (
+    <div className={`day-card ${open ? 'day-card--open' : ''}`}>
+      <div className="day-card-header" onClick={() => setOpen((o) => !o)}>
+        <div className="day-number">Day {day.day}</div>
+        <div className="day-date">{day.date}</div>
+        <div className="day-summary">{day.accommodation}</div>
+        <span className="day-toggle">{open ? '▲' : '▼'}</span>
+      </div>
+
+      {open && (
+        <div className="day-card-body">
+          {/* Meals */}
+          <div className="day-meals">
+            {['breakfast', 'lunch', 'dinner'].map((m) => {
+              const meal = meals[m];
+              if (!meal) return null;
+              return (
+                <div key={m} className="meal-row">
+                  <span className="meal-type">{m.charAt(0).toUpperCase() + m.slice(1)}</span>
+                  <span className="meal-name">{meal.name}</span>
+                  <span className="meal-cuisine">{meal.cuisine}</span>
+                  <span className="meal-price">${fmt(meal.pricePerPerson)}/person</span>
+                  {meal.rating && <span className="meal-rating">⭐ {meal.rating}</span>}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Activities */}
+          {day.activities?.length > 0 && (
+            <div className="day-activities">
+              <div className="activities-label">Suggested Activities</div>
+              <div className="activities-list">
+                {day.activities.map((a, i) => (
+                  <span key={i} className="activity-tag">🎯 {a}</span>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ─── Main Itinerary Component ─────────────────────────────────────────────────
+const Itinerary = ({ data, onReset }) => (
+  <section className="itin-wrapper">
+    <SummaryCard data={data} />
+    <FlightCard flight={data.selectedFlight} />
+    <HotelCard hotel={data.selectedHotel} />
+    <BudgetBreakdown data={data} />
+
+    {/* Daily Schedule */}
+    {data.dailySchedule?.length > 0 && (
+      <div className="itin-section fade-up">
+        <h2 className="section-title">📋 Day-by-Day Schedule</h2>
+        <p className="section-sub">Click any day to expand meals & activities</p>
+        <div className="day-list">
+          {data.dailySchedule.map((day) => (
+            <DayCard key={day.day} day={day} />
+          ))}
+        </div>
+      </div>
+    )}
+
+    {/* Footer actions */}
+    <div className="itin-actions fade-up">
+      <button className="btn-reset" onClick={onReset}>
+        ← Plan Another Trip
+      </button>
+      <button
+        className="btn-print"
+        onClick={() => window.print()}
+      >
+        🖨 Print Itinerary
+      </button>
+    </div>
+
+    <div className="itin-generated">
+      Generated at {new Date(data.generatedAt).toLocaleString()} · ID: {data._id}
+    </div>
+  </section>
+);
+
+export default Itinerary;
